@@ -118,6 +118,10 @@ target_link_libraries(n3ctrl_node
   ${catkin_LIBRARIES}
 )
 
+##terminal_control.cpp
+add_executable(terminal_control src/terminal_control.cpp)
+add_dependencies(terminal_control n3ctrl_generate_messages_cpp)
+target_link_libraries(terminal_control ${catkin_LIBRARIES})
 
 #############
 ## Install ##
