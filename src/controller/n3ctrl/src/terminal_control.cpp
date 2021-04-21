@@ -7,7 +7,8 @@ using namespace std;
 
 //即将发布的command
 quadrotor_msgs::PositionCommand cmd;
-
+double pos_gain[3] = {0, 0, 0};
+double vel_gain[3] = {0, 0, 0};
 //发布
 ros::Publisher pos_cmd_pub;
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -27,6 +28,8 @@ int main(int argc, char **argv)
     cmd.kv[0] = vel_gain[0];
     cmd.kv[1] = vel_gain[1];
     cmd.kv[2] = vel_gain[2];
+
+    cmd.trajectory_id = 1;
 
     //固定的浮点显示
     cout.setf(ios::fixed);
@@ -61,7 +64,7 @@ int main(int argc, char **argv)
         cmd.header.stamp = ros::Time::now();
         cmd.header.frame_id = "world";
         cmd.trajectory_flag = quadrotor_msgs::PositionCommand::TRAJECTORY_STATUS_READY;
-        cmd.trajectory_id = 1;
+        cmd.trajectory_id = cmd.trajectory_id + 1;
 
         cmd.position.x = pos_sp[0];
         cmd.position.y = pos_sp[1];
@@ -80,7 +83,7 @@ int main(int argc, char **argv)
 
         pos_cmd_pub.publish(cmd);
 
-        ros::spinonce();
+        ros::spinOnce();
         sleep(1.0); 
     }
 
