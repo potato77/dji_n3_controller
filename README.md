@@ -64,20 +64,25 @@
   - 不给定传感器输入时，建立全可通行地图，则变成纯轨迹规划器
 
 ego_planner_node.cpp 是入口程序，声明并初始化了EGOReplanFSM类
+
 ego_replan_fsm.cpp 是EGOReplanFSM类
   - 声明并初始化了EGOPlannerManager类
   - 定时器exec_timer_ 状态机循环 0.01秒
   - 定时器safety_timer_ 安全检测 0.05秒
   - 订阅里程计
   - 发布B样条<ego_planner::Bspline>（调用EGOPlannerManager类）
+
 planner_manager.cpp是EGOPlannerManager类
   - 声明并初始化了GridMap类
   - 声明并初始化了BsplineOptimizer类
   - 在BsplineOptimizer类中初始化了gridmap地图
   - 在BsplineOptimizer类中初始化了a_star_
+
 bspline_optimizer.cpp是BsplineOptimizer类
   - 调用a_star_规划全局路径，优化路径
+
 path_serching.cpp是AStar类
+
 grid_map.cpp是GridMap类（他这里是增量式的建图吗？）
   - 订阅了深度
   - 订阅了点云、里程计
@@ -89,6 +94,7 @@ traj_server.cpp
   - 发布控制指令<quadrotor_msgs::PositionCommand>，100Hz
 
 traj_utils中polynomial_traj.cpp是计算多项式轨迹的
+
 traj_utils中planning_visualization.cpp是用于rviz显示路径、目标点等显示的
 
 
