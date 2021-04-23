@@ -91,6 +91,15 @@ traj_server.cpp
 traj_utils中polynomial_traj.cpp是计算多项式轨迹的
 traj_utils中planning_visualization.cpp是用于rviz显示路径、目标点等显示的
 
+
+EGO 是一个基于梯度的样条优化器和一个后细化的过程 的组合
+
+前端得到路径，然后直接优化得到轨迹（考虑smoothness,colision,dynamical feasibility），其他方法需要先搭建ESDF地图
+
+如果优化得到的轨迹是有碰撞的，则映射推力至轨迹，并使轨迹out of obstacles。即，只有当有必要的时候才计算梯度
+
+如果得到的轨迹超过动力学限制（一般是time allocation的问题），则改良过程启动，重新进行time allocation
+
 ### PX4驱动问题
 
 -不改动ego源码，在prometheus项目中做适配修改，这么做是为了兼容更多类似ego项目
