@@ -90,3 +90,11 @@ traj_server.cpp
 
 traj_utils中polynomial_traj.cpp是计算多项式轨迹的
 traj_utils中planning_visualization.cpp是用于rviz显示路径、目标点等显示的
+
+### PX4驱动问题
+
+-不改动ego源码，在prometheus项目中做适配修改，这么做是为了兼容更多类似ego项目
+- 在gazebo中，尝试使用激光雷达发布点云
+- px4_pos_estimator中发布odom
+- px4_test订阅指令，使用geometry进行控制（和so3进行对比）
+- 
