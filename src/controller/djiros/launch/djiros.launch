@@ -3,10 +3,19 @@
         <param name="log_level" type="string" value="info"/>
         <param name="serial_name" type="string" value="/dev/ttyUSB0"/>
         <param name="baud_rate" type="int" value="921600"/>
-        <param name="app_id" type="int" value="1091604"/>
-        <param name="enc_key" type="string" value="234f63f94bbfe7bfe32e59ff55baca4c246fe17ede4d3c90f0f8fea572a94914"/> 
+        <param name="app_id" type="int" value="1102742"/>
+        <param name="enc_key" type="string" value="239f44a8220370f85d89ceca6c58501fe177ef31a027af7d65ff9ca5294bc381"/> 
         <param name="app_version" type="int" value="1"/>
         <param name="sensor_mode" type="bool" value="false"/>
         <param name="align_with_fmu" type="bool" value="false"/>
 	</node>
+
+    	<!-- vrpn -->
+	<!-- <include file="$(find vrpn_client_ros)/launch/sample.launch">
+		<arg name="server" value="192.168.1.2"/>
+	</include> -->
+
+    <node pkg="n3ctrl_pid" type="vicon_odom" name="vicon_odom" output="screen" launch-prefix="">
+        <param name="object_name" type="string" value="dji_n3"/>
+	</node> 
 </launch>

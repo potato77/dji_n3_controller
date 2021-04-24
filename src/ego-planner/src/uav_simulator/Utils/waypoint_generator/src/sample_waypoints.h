@@ -62,13 +62,13 @@ nav_msgs::Path point()
 nav_msgs::Path circle()
 {
     double h = 1.0;
-    double scale = 5.0;
+    double scale = 1.0;
     nav_msgs::Path waypoints;
     geometry_msgs::PoseStamped pt;
     pt.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
     
-    pt.pose.position.y = -1.2 * scale;
-    pt.pose.position.x =  2.5 * scale;
+    pt.pose.position.y = -0 * scale;
+    pt.pose.position.x =  1 * scale;
     pt.pose.position.z =  h;
     waypoints.poses.push_back(pt);      
 

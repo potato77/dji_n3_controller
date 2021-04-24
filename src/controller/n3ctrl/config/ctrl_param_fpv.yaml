@@ -1,6 +1,6 @@
-mass        : 1.5
+mass        : 1.0
 gra         : 9.81
-hov_percent : 0.16
+hov_percent : 0.40
 full_thrust : 60
 ctrl_rate   : 100.0
 js_ctrl_lock_velo: 0.3
@@ -23,7 +23,7 @@ gain:
         Kp2: 2.0
         Kv0: 2.0
         Kv1: 2.0
-        Kv2: 2.0
+        Kv2: 0.5
         Kvi0: 0.3
         Kvi1: 0.3
         Kvi2: 0.3

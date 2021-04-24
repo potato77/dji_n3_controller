@@ -1,6 +1,6 @@
 <launch>
 	<arg name="uavname" default="fpv" />
-        <arg name="odom_topic" value="/vins_estimator/imu_propagate" />
+        <arg name="odom_topic" value="/dji_n3/odom" />
 
 	<node pkg="n3ctrl" type="n3ctrl_node" name="n3ctrl" output="screen">
 		<remap from="~joy" to="/djiros/rc" />
@@ -16,5 +16,5 @@
         <param name="work_mode" value="real-time" />
         <param name="js_ctrl_mode" value="feedback" />
 	</node>
- 
+
 </launch>

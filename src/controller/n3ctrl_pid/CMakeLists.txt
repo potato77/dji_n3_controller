@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   std_srvs
   tf
+  tf2_eigen
   #prometheus_msgs
   quadrotor_msgs
   geometry_msgs
@@ -61,10 +62,9 @@ include_directories(
 ##      声明可执行cpp文件     ##
 ###############################
 
-
-# add_executable(eigen_test src/Utilities/eigen_test.cpp)
-# add_dependencies(eigen_test prometheus_control_gencpp)
-# target_link_libraries(eigen_test ${catkin_LIBRARIES})
+add_executable(vicon_odom src/vicon_odom.cpp)
+add_dependencies(vicon_odom n3ctrl_pid_gencpp)
+target_link_libraries(vicon_odom ${catkin_LIBRARIES})
 
 #############
 ## Install ##
