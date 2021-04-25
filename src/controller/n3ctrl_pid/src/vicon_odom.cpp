@@ -9,18 +9,10 @@ using namespace std;
 
 bool init_ok = false;
 string object_name;
-
 Eigen::Vector3d pos_now, pos_last;
 Eigen::Vector3d vel_0, vel_1, vel_2, vel_3, vel_4, vel_filter;
 nav_msgs::Odometry Drone_odom;
-ros::Time now_t, last_odom_t, last_path_t;
-
-
-//---------------------------------------vicon定位相关------------------------------------------
-Eigen::Vector3d pos_drone_mocap; //无人机当前位置 (vicon)
-Eigen::Quaterniond q_mocap;
-Eigen::Vector3d Euler_mocap; //无人机当前姿态 (vicon)
-
+ros::Time time_now, time_last;
 ros::Publisher odom_pub;
 
 void mocap_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
@@ -38,49 +30,41 @@ void mocap_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
         vel_4 << 0.0, 0.0, 0.0;
         vel_filter << 0.0, 0.0, 0.0;
 
-        last_odom_t = msg->header.stamp;
+        time_last = msg->header.stamp;
     }
     else
     {
-        now_t = msg->header.stamp;
-
-        
+        // 目前mocap坐标系为FRU坐标系，否则需要进行坐标转换
+        time_now = msg->header.stamp;
         pos_now.x() = msg->pose.position.x;
         pos_now.y() = msg->pose.position.y;
         pos_now.z() = msg->pose.position.z;
-        // now_Quat.w() = msg->pose.orientation.w;
-        // now_Quat.x() = msg->pose.orientation.x;
-        // now_Quat.y() = msg->pose.orientation.y;
-        // now_Quat.z() = msg->pose.orientation.z;
-
-        // Q_w = now_Quat.normalized( ).toRotationMatrix( );
 
         /** velocity filter **/
-        vel_0 = ( pos_now - pos_last ) / ( now_t - last_odom_t ).toSec( );        
+        vel_0 = ( pos_now - pos_last ) / ( time_now - time_last ).toSec( );        
         vel_filter = ( vel_0 + vel_1 + vel_2 + vel_3 + vel_4 ) * 0.2;
         vel_4 = vel_3;
         vel_3 = vel_2;
         vel_2 = vel_1;
         vel_1 = vel_0;
-        //        std::cout << " time " << ( now_t - last_t ).toSec( ) << std::endl;
-        //        std::cout << " vel_0 " << vel_0 << std::endl;
+        //        cout << " time " << ( time_now - last_t ).toSec( ) << endl;
+        cout << " vel_filter " << vel_filter << "[m/s]" << std::endl;
 
-        Drone_odom.header.stamp            = now_t;
+        Drone_odom.header.stamp            = time_now;
         Drone_odom.header.frame_id         = "world";
         Drone_odom.child_frame_id          = "world";
         Drone_odom.pose.pose.position.x    = pos_now.x();
         Drone_odom.pose.pose.position.y    = pos_now.y();
         Drone_odom.pose.pose.position.z    = pos_now.z();
         Drone_odom.pose.pose.orientation = msg->pose.orientation;
-        Drone_odom.twist.twist.linear.x    = vel_filter.x(); // now_vel.x();
-        Drone_odom.twist.twist.linear.y    = vel_filter.y(); // now_vel.y();
-        Drone_odom.twist.twist.linear.z    = vel_filter.z(); // now_vel.z();
+        Drone_odom.twist.twist.linear.x    = vel_filter.x(); 
+        Drone_odom.twist.twist.linear.y    = vel_filter.y(); 
+        Drone_odom.twist.twist.linear.z    = vel_filter.z(); 
         odom_pub.publish(Drone_odom);
 
-        last_odom_t = now_t;
+        time_last = time_now;
         pos_last = pos_now;
     }
-
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -91,8 +75,10 @@ int main(int argc, char **argv)
 
     nh.param<string>("object_name", object_name, "dji_n3");
 
+    // 通过vrpn_client_ros订阅来自动捕的消息（位置和姿态消息），并通过微分平滑滤波的方式估计线速度
     ros::Subscriber mocap_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/"+ object_name + "/pose", 100, mocap_cb);
 
+    // 将上述信息整合为里程计信息发布，用于位置环控制
     odom_pub = nh.advertise<nav_msgs::Odometry>("/dji_n3/Drone_odom", 10);
 
     // 频率

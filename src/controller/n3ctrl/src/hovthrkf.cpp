@@ -15,6 +15,7 @@ void HovThrKF::init() {
     // to ensure init this after param is inited.
     ROS_ASSERT_MSG(mass > 0.1 && max_force > 9.8, "mass=%f max_force=%f", mass, max_force);
 
+    // x(0) = hov是悬停油门
     x = Vector2d(0.0, 0.0);
     P = Matrix<double, 2, 2>();
     P << 0.5 * 0.5, 0, 0, 1 * 1;

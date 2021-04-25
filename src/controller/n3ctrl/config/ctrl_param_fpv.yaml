@@ -1,6 +1,9 @@
-mass        : 1.0
+# 质量要准确设置
+mass        : 1.2
 gra         : 9.81
+# hov_percent会影响最大推力
 hov_percent : 0.40
+# full_thrust 会在程序中根据mass和hov_percent重新计算
 full_thrust : 60
 ctrl_rate   : 100.0
 js_ctrl_lock_velo: 0.3
@@ -9,6 +12,7 @@ pub_debug_msgs: false
 
 hover:
     set_hov_percent_to_zero: false
+    # 此处设置为true，则 full_thrust = mass * gra / hov_percent;
     use_hov_percent_kf: true
     vert_velo_limit_for_update: 0.2
     vert_height_limit_for_update: 0.2
@@ -18,18 +22,23 @@ hover:
 gain:
     hover:
         # Controller gain in minimun snap
+        # 位置比例控制
         Kp0: 2.0 
         Kp1: 2.0 
         Kp2: 2.0
+        # 速度比例控制
         Kv0: 2.0
         Kv1: 2.0
-        Kv2: 0.5
+        Kv2: 2.0
+        # 速度积分控制?
         Kvi0: 0.3
         Kvi1: 0.3
         Kvi2: 0.3
+        # 加速度前馈系数
         Ka0: 1.0
         Ka1: 1.0
         Ka2: 1.0
+        # 偏航角误差反馈系数
         Kyaw: 20.0
     track:
         Kp0: 2.3
@@ -55,10 +64,13 @@ idling:
     landing_thrust_percent: 0.6
     lowest_thrust:          0.05
 
+# 遥控器参数
 rc:
+    ## 遥控器定点控制时，获取期望水平、垂直速度的比例
     hori_velo_scale:   3.0
     vert_velo_scale:   3.0
     # rad 30~0.523 45~0.785 60~1.047
+    ## 遥控器定点控制时，获取期望yaw的比例
     yaw_scale:         0.523
     attitude_scale:    0.523
     deadzone:          0.1

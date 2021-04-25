@@ -24,6 +24,7 @@ N3CtrlFSM::N3CtrlFSM(Parameter_t& param_, Controller& controller_, HovThrKF& hov
 void N3CtrlFSM::process()
 {
 	ros::Time now_time = ros::Time::now();
+	// 本函数的实际执行频率，ctrl_rate = 100，即100Hz
 	if ((now_time - last_ctrl_time).toSec() < (1.0 / param.ctrl_rate))
 	{
 		return;
@@ -43,6 +44,7 @@ void N3CtrlFSM::process()
 	// 			(odom_data.rcv_stamp-odom_data.msg.header.stamp).toSec());
 
 	// -------- for simulation ----------
+	// 此处不理会
 	if (work_mode == SIMULATION || work_mode == SIM_WITHOUT_RC)
 	{
 		rc_data.rcv_stamp = now_time;
@@ -74,6 +76,7 @@ void N3CtrlFSM::process()
 	}
 	// ----------------------------------
 
+	// 检测遥控器是否一直连接
 	if (!rc_is_received(now_time))
 	{
 		ROS_ERROR("RC lost for %3f seconds!!!! Exit...", (now_time - rc_data.rcv_stamp).toSec());
@@ -88,6 +91,7 @@ void N3CtrlFSM::process()
 		exit(-1);
 	}
 
+	// enter_command_mode来自脚架通道，即进入自动指令模式
 	if (rc_data.enter_command_mode)
 	{
 		geometry_msgs::PoseStamped msg;
@@ -101,8 +105,17 @@ void N3CtrlFSM::process()
 		}
 	}
 
+	// 只针对 (state == JS_CTRL || state == CMD_CTRL || state == DIRECT_CTRL)三种状态
+	// 函数定义在N3CtrlFSM_state.cpp
+	// 暂不清楚，看着像是根据当前情况判断是否进入怠速旋转的作用
 	determine_idling(now_time);
+	// 确定状态
+	// 函数定义在N3CtrlFSM_state.cpp
+	// 功能包括:判断odom的坐标、odom是否超时、判断cmd是否valid
+	// 最重要的是判断当前的状态机，并重置控制参数
 	determine_state(now_time);
+	// 根据状态执行控制
+	// 函数定义在N3CtrlFSM_control.cpp
 	process_control(now_time);
 
 	if (state == CMD_HOVER || state == CMD_CTRL)
@@ -117,6 +130,7 @@ void N3CtrlFSM::process()
 		dbgss << "cur: " << odom_data.p.transpose() << endl;
 	}
 
+	// 不清楚这块publish_led_vis是如何作用的
 	if (state == JS_NO_CTRL || state == JS_RESET_POS_CTRL || state == CMD_NO_CTRL || state == CMD_RESET_POS_CTRL)
 	{
 		stateVisualizer.publish_led_vis(now_time, "noodom");

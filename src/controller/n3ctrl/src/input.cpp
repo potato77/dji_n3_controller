@@ -2,6 +2,7 @@
 
 using uav_utils::in_range;
 
+
 RC_Data_t::RC_Data_t() {
     rcv_stamp = ros::Time(0);
 
@@ -16,6 +17,8 @@ RC_Data_t::RC_Data_t() {
 }
 
 void RC_Data_t::set_default_mode(std::string s) {
+    // 设置当前默认的遥控器模式及脚架通道
+    // manual + noapi
     if (s == "manual") {
         last_gear = MANUAL_MODE_GEAR_VALUE;
     } else if (s == "command") {
@@ -41,8 +44,10 @@ void RC_Data_t::feed(sensor_msgs::JoyConstPtr pMsg) {
     gear = msg.axes[5];
     if(gear < -1.0) gear = -1.0; //zxzxzxzx
 
+    // 检查所有的输入是否有效
     check_validity();
 
+    // 模式切换逻辑
     if (last_mode < API_MODE_THRESHOLD_VALUE && mode > API_MODE_THRESHOLD_VALUE)
         enter_api_mode = true;
     else
@@ -126,6 +131,7 @@ Command_Data_t::Command_Data_t() {
     trajectory_flag = 0;
 }
 
+
 void Command_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg) {
 
     // if(msg.trajectory_id == 0)
@@ -153,6 +159,23 @@ void Command_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg) {
 
     trajectory_id = msg.trajectory_id;
     trajectory_flag = msg.trajectory_flag;
+}
+
+Cmd_point_Data_t::Cmd_point_Data_t() 
+{
+    rcv_stamp = ros::Time(0);
+}
+
+void Cmd_point_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg) 
+{
+    msg = *pMsg;
+    rcv_stamp = ros::Time::now();
+
+    p(0) = msg.position.x;
+    p(1) = msg.position.y;
+    p(2) = msg.position.z;
+
+    yaw = uav_utils::normalize_angle(msg.yaw);
 }
 
 Idling_Data_t::Idling_Data_t() {

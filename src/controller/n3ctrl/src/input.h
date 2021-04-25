@@ -77,6 +77,20 @@ class Imu_Data_t {
     void feed(sensor_msgs::ImuConstPtr pMsg);
 };
 
+class Cmd_point_Data_t {
+  public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    Eigen::Vector3d p;
+    double yaw;
+
+    quadrotor_msgs::PositionCommand msg;
+    ros::Time rcv_stamp;
+
+    Cmd_point_Data_t();
+    void feed(quadrotor_msgs::PositionCommandConstPtr pMsg);
+};
+
+
 class Command_Data_t {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

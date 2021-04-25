@@ -13,14 +13,17 @@ void N3CtrlFSM::process_control(const ros::Time& now_time)
 	//ROS_WARN("[n3ctrl] state = %d",state); //zxzxzxzx
 	//result: state always equals 2
 	//ROS_WARN("[n3ctrl] js_ctrl_mode = %d",js_ctrl_mode); //zxzxzxzx
-
+	
+	// 手柄直接控制，是那么也不做
 	if (state == DIRECT_CTRL)
 	{
 		// process_raw_control(u, u_so3);
 		return;
 	}	
+	// 手柄控制
 	else if (state == JS_CTRL)
 	{
+		// js_ctrl_mode = feedback
 		if (js_ctrl_mode==JS_CTRL_MODE_RAW)
 		{
 			ROS_WARN("[n3ctrl] js_ctrl_mode = JS_CTRL_MODE_RAW");//zxzxzxzx
@@ -29,6 +32,8 @@ void N3CtrlFSM::process_control(const ros::Time& now_time)
 		else
 		{
 			// This function is called when it is running normally. zxzxzxzx
+			// js_ctrl_mode = feedback
+			// 执行手柄定点控制，（核心！！）
 			process_js_control(u, u_so3);
 		}
 	}
@@ -43,11 +48,14 @@ void N3CtrlFSM::process_control(const ros::Time& now_time)
 	}
 	else if (state == CMD_HOVER)
 	{
+		// CMD控制下悬停控制，（核心！！）
+		// 后期将该状态机改为接受定点控制
 		process_hover_control(u, u_so3);
 	}
 	else if (state == CMD_CTRL)
 	{
 		//ROS_WARN("[n3ctrl] state = CMD_CTRL");//zxzxzxzx
+		//  CMD控制下轨迹追踪控制，（核心！！）
 		process_cmd_control(u, u_so3);
 	}
 	else if (state == CMD_NO_CTRL)
@@ -69,12 +77,20 @@ void N3CtrlFSM::process_control(const ros::Time& now_time)
 		process_idling_control(u, u_so3, idling_lasting_time);
 	}
 
+	// 发布u_so3控制指令，无实际作用
+	// fsm.controller.ctrl_so3_thrust_pub =nh.advertise<geometry_msgs::WrenchStamped>("ctrl_so3/thrust", 10);
 	controller.publish_so3_ctrl(u_so3, now_time);
+	// 对u.yaw做了处理，没太搞懂
 	align_with_imu(u);
+	
+	// 发布控制指令，至dji_sdk（核心！！）
+	//	fsm.controller.ctrl_pub = nh.advertise<sensor_msgs::Joy>("ctrl", 10);
 	controller.publish_ctrl(u, now_time, odom_data.msg.header.stamp);
 
+	// 这一整段是配置油门，但都没使用上，可忽略
 	if (idling_state == NOIDLING)
 	{
+		// 这基本是大部分情况了
 		if ((state==JS_CTRL && axis_states[2]==FIX && js_ctrl_mode==JS_CTRL_MODE_FEEDBACK) // JS_CTRL hovering case
 			|| (state==CMD_HOVER) // CMD_HOVER case
 			|| (state==CMD_CTRL   // CMD_CTRL verticle stationary case
@@ -84,6 +100,7 @@ void N3CtrlFSM::process_control(const ros::Time& now_time)
 				&& odom_data.p(2) > param.hover.vert_height_limit_for_update))
 		{
 #if 0			
+			// 默认没启用
 			hov_thr_kf.update(imu_data.a(2));
 
 			// This line may not take effect according to param.hov.use_hov_percent_kf
@@ -92,8 +109,10 @@ void N3CtrlFSM::process_control(const ros::Time& now_time)
 			hov_thr_kf.process(u.thrust);
 			hov_thr_kf.publish_thr();
 #else			
+			// 更新悬停油门
 			hov_thr_kf.simple_update(imu_data.q, u.thrust, imu_data.a);
 			// This line may not take effect according to param.hov.use_hov_percent_kf
+			// 设置油门上限，但没使用
 			param.config_full_thrust(hov_thr_kf.get_hov_thr());
 			hov_thr_kf.publish_thr();
 #endif			
@@ -147,9 +166,15 @@ void N3CtrlFSM::process_idling_control(Controller_Output_t& u, SO3_Controller_Ou
 void N3CtrlFSM::process_hover_control(Controller_Output_t& u, SO3_Controller_Output_t& u_so3)
 {
 	Desired_State_t des;
+	// 将期望位置设定为悬停点
 	des.p = hover_pose.head<3>();
 	des.v = Vector3d::Zero();
 	des.yaw = hover_pose(3);
+	// 改为获取指定目标点
+	// des.p = point_data.p;
+	// des.v = Vector3d::Zero();
+	// des.yaw = point_data.yaw;
+
 	des.a = Vector3d::Zero();
 
 	controller.update(des, odom_data, u, u_so3);
@@ -173,16 +198,19 @@ void N3CtrlFSM::process_break_control(Controller_Output_t& u, SO3_Controller_Out
 void N3CtrlFSM::process_cmd_control(Controller_Output_t& u, SO3_Controller_Output_t& u_so3)
 {
 	Desired_State_t des;
+	// cmd_data 是回调函数得到的
 	des.p = cmd_data.p;
 	des.v = cmd_data.v;
 	des.yaw = cmd_data.yaw;
 	des.a = cmd_data.a;
 
+	// 核心代码
 	controller.update(des, odom_data, u, u_so3);
 
 	publish_desire(des);	
 }
 
+// 手柄定点控制
 void N3CtrlFSM::process_js_control(Controller_Output_t& u, SO3_Controller_Output_t& u_so3)
 {
 	Desired_State_t des;
@@ -197,14 +225,18 @@ void N3CtrlFSM::process_js_control(Controller_Output_t& u, SO3_Controller_Output
 	{
 		switch(axis_states[axis_id]) // xy axis
 		{
+			// 定点
 			case FIX:
+				// hover_pose通过set_hov_with_odom()已设置过
 				des.p(axis_id) = hover_pose(axis_id);
 				des.v(axis_id) = 0.0;
 				break;
+			// 定点 + 速度
 			case MOVE:
 				des.p(axis_id) = odom_data.p(axis_id);
 				des.v(axis_id) = des_v(axis_id);
 				break;
+			// 定点
 			case BREAK:
 				des.p(axis_id) = odom_data.p(axis_id);
 				des.v(axis_id) = 0.0;
@@ -221,6 +253,7 @@ void N3CtrlFSM::process_js_control(Controller_Output_t& u, SO3_Controller_Output
 			des.yaw = hover_pose(axis_id);
 			break;
 		case MOVE:
+			// 当前yaw+期望yaw（偏差）
 			des.yaw = yaw_add(get_yaw_from_odom(), des_dyaw);
 			break;
 		case BREAK:
@@ -230,7 +263,10 @@ void N3CtrlFSM::process_js_control(Controller_Output_t& u, SO3_Controller_Output
 			ROS_ASSERT(false);
 	}
 
+	// 计算控制指令
 	controller.update(des, odom_data, u, u_so3); 
 
+	// 发布 fsm.des_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("desire_pose", 10);
+	// 只是用于rviz显示或者debug
 	publish_desire(des);
 }

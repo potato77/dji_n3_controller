@@ -190,6 +190,7 @@ void N3CtrlFSM::go_to_state(State_t ds)  // dest state
         case JS_CTRL:
             controller.config_gain(param.hover_gain);
             ROS_INFO("[N3CTRL] ---- Enter JS_CTRL mode");
+            // 设置悬停位置
             set_hov_with_odom();
             break;
         case JS_NO_CTRL:
@@ -206,6 +207,7 @@ void N3CtrlFSM::go_to_state(State_t ds)  // dest state
             set_hov_with_odom();
             break;
         case CMD_CTRL:
+            // 仅有CMD_CTRL下配置track_gain
             controller.config_gain(param.track_gain);
             ROS_INFO("[N3CTRL] ---- Enter CMD_CTRL mode.");
             break;

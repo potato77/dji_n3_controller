@@ -17,6 +17,13 @@
   sudo make -j7 install
   ```
 
+- 可能需要安装依赖项
+
+  ```c
+
+  sudo apt-get install ros-melodic-vrpn
+  ```
+
 - 编译整个项目
   ```
   cd dji_n3_controller/
@@ -60,6 +67,10 @@
      ## 参数文件
      $(find n3ctrl)/config/ctrl_param_$(arg uavname).yaml
   ```
+  - 在弄懂n3ctrl的订阅发布以及状态切换后，真正核心的代码在controller.cpp
+    - Controller::update() 更新控制量
+    - Controller::publish_ctrl() 发布控制量
+
 - ego-planner是规划器
   - 不给定传感器输入时，建立全可通行地图，则变成纯轨迹规划器
 
@@ -113,3 +124,11 @@ EGO 是一个基于梯度的样条优化器和一个后细化的过程 的组合
 - px4_pos_estimator中发布odom
 - px4_test订阅指令，使用geometry进行控制（和so3进行对比）
 - 
+
+### 参考资料
+
+https://github.com/dji-sdk/Onboard-SDK/tree/3.7
+
+https://github.com/dji-sdk/Onboard-SDK-ROS/tree/3.7
+
+http://wiki.ros.org/dji_sdk

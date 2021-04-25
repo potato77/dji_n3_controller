@@ -22,6 +22,7 @@ public:
 	Odom_Data_t odom_data;
 	Imu_Data_t imu_data;
 	Command_Data_t cmd_data;
+	Cmd_point_Data_t point_data;
 	Idling_Data_t idling_data;
 	Trigger_Data_t trigger_data;
 
@@ -42,11 +43,17 @@ public:
 
 	enum State_t
 	{
+		// 手柄直接控制，即手动模式
 		DIRECT_CTRL=0,
+		// 手柄位置控制（odom有效）
 		JS_CTRL,
+		// 手柄（odom失效）
 		JS_NO_CTRL,
+		// 由JS_NO_CTRL到JS_CTRL的中间态，重设位置
 		JS_RESET_POS_CTRL,
+		// 指令悬停
 		CMD_HOVER,
+		// 指令控制
 		CMD_CTRL,
 		CMD_NO_CTRL,
 		CMD_RESET_POS_CTRL

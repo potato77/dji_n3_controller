@@ -81,8 +81,9 @@ void Parameter_t::config_from_ros_handle(const ros::NodeHandle& nh)
 	read_essential_param(nh, "pub_debug_msgs", pub_debug_msgs);
 	
 	// read_essential_param(nh, "paramname", paramval);
-
+	// 默认是实际飞行模式
 	nh.param("work_mode", work_mode, std::string("realtime"));
+	// 默认是feedback
 	nh.param("js_ctrl_mode", js_ctrl_mode, std::string("feedback"));
 };
 

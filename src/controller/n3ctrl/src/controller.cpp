@@ -31,6 +31,7 @@ void Controller::config_gain(const Parameter_t::Gain& gain)
 	Kp.setZero();
 	Kv.setZero();
 	Ka.setZero();
+	// CMD_CTRL时使用track参数，其他均使用hover参数
 	Kp(0,0) = gain.Kp0;
 	Kp(1,1) = gain.Kp1;
 	Kp(2,2) = gain.Kp2;
@@ -55,6 +56,7 @@ void Controller::update(
 {
 	ROS_ASSERT_MSG(is_configured, "Gains for controller might not be initialized!");
 	std::string constraint_info("");
+	// 误差项，期望力
 	Vector3d e_p, e_v, F_des;
 	double e_yaw = 0.0;
 
@@ -64,26 +66,44 @@ void Controller::update(
 		int_e_v.setZero();
 	}
 
+	// 获取当前偏航角
 	double yaw_curr = get_yaw_from_quaternion(odom.q);
+	// 期望偏航角
 	double	yaw_des = des.yaw;
+	// 坐标转换矩阵（仅根据当前yaw角生成）
+	// 没看懂为什么要乘上wRc和cRw
+	// 
 	Matrix3d wRc = rotz(yaw_curr);
 	Matrix3d cRw = wRc.transpose();
 
+	// 位置误差
 	e_p = des.p - odom.p;
+	// p控制
+	// e_p是ENU坐标系的,u_p也是ENU系的
+	//  wRc * Kp * cRw * e_p =  Kp * e_p
 	Eigen::Vector3d u_p = wRc * Kp * cRw * e_p;
 	
+	// 速度误差 = 期望速度  + 位置p控制 - 当前速度
+	// 此处有点串级控制的意思
 	e_v = des.v + u_p - odom.v;
-
+	
+	// integration_enable_limits这个没用
 	const std::vector<double> integration_enable_limits = {0.1, 0.1, 0.1};
+	
+	// 积分项？
 	for (size_t k = 0; k < 3; ++k) {
 		if (std::fabs(e_v(k)) < 0.2) {
 			int_e_v(k) += e_v(k) * 1.0 / 50.0;
 		}
 	}
 
+	// 速度比例控制
 	Eigen::Vector3d u_v_p = wRc * Kv * cRw * e_v;
-	const std::vector<double> integration_output_limits = {0.4, 0.4, 0.4};
+
+	// 速度积分控制
 	Eigen::Vector3d u_v_i = wRc * Kvi * cRw * int_e_v;
+
+	const std::vector<double> integration_output_limits = {0.4, 0.4, 0.4};
 	for (size_t k = 0; k < 3; ++k) {
 		if (std::fabs(u_v_i(k)) > integration_output_limits[k]) {
 			uav_utils::limit_range(u_v_i(k), integration_output_limits[k]);
@@ -91,19 +111,23 @@ void Controller::update(
 		}
 	}
 
+	// 速度控制
 	Eigen::Vector3d u_v = u_v_p + u_v_i;
 
+	// 偏航角误差
 	e_yaw = yaw_des - yaw_curr;
 
 	while(e_yaw > M_PI) e_yaw -= (2 * M_PI);
 	while(e_yaw < -M_PI) e_yaw += (2 * M_PI);
 
+	// 偏航教控制量
 	double u_yaw = Kyaw * e_yaw;
 	
+	// 期望力 = 质量*控制量 + 重力抵消 + 期望加速度*质量*Ka
+	F_des = u_v * param.mass + Vector3d(0, 0, param.mass * param.gra) + Ka * param.mass * des.a;
 	
-	F_des = u_v * param.mass + 
-		Vector3d(0, 0, param.mass * param.gra) + Ka * param.mass * des.a;
-	
+	// 如果向上推力小于重力的一半
+	// 或者向上推力大于重力的两倍
 	if (F_des(2) < 0.5 * param.mass * param.gra)
 	{
 		constraint_info = boost::str(
@@ -117,6 +141,7 @@ void Controller::update(
 		F_des = F_des / F_des(2) * (2 * param.mass * param.gra);
 	}
 
+	// 角度限制幅度
 	if (std::fabs(F_des(0)/F_des(2)) > std::tan(toRad(50.0)))
 	{
 		constraint_info += boost::str(boost::format("x(%f) too tilt; ")
@@ -124,6 +149,7 @@ void Controller::update(
 		F_des(0) = F_des(0)/std::fabs(F_des(0)) * F_des(2) * std::tan(toRad(30.0));
 	}
 
+	// 角度限制幅度
 	if (std::fabs(F_des(1)/F_des(2)) > std::tan(toRad(50.0)))
 	{
 		constraint_info += boost::str(boost::format("y(%f) too tilt; ")
@@ -132,6 +158,7 @@ void Controller::update(
 	}
 	// }
 
+	// pub_debug_msgs: false ,此处无用
 	if(param.pub_debug_msgs)
 	{
 		std_msgs::Header msg;
@@ -237,6 +264,7 @@ void Controller::update(
 		R_des = R_des2;
 	}
 
+	// so3 control, 此处被屏蔽
 	// {	// so3 control
 	// 	u_so3.Rdes = R_des;
 	// 	u_so3.Fdes = F_des;
@@ -247,17 +275,28 @@ void Controller::update(
 	// }
 
 	{	// n3 api control in forward-left-up frame
+		// F_des是位于ENU坐标系的,F_c是FLU
 		Vector3d F_c = wRc.transpose() * F_des;
+		// 无人机姿态的矩阵形式
 		Matrix3d wRb_odom = odom.q.toRotationMatrix();
+		// 第三列
 		Vector3d z_b_curr = wRb_odom.col(2);
+		// 机体系下的推力合力 相当于Rb * F_enu 惯性系到机体系
 		double u1 = F_des.dot(z_b_curr);
 		double fx = F_c(0);
 		double fy = F_c(1);
 		double fz = F_c(2);
+		// 期望roll: 
 		u.roll  = std::atan2(-fy, fz);
 		u.pitch = std::atan2( fx, fz);
+		// 油门 = 期望推力/最大推力
+		// full_thrust = mass * gra / hov_percent;
+		// 这里相当于认为油门是线性的,满足某种比例关系,即认为某个重量 = 悬停油门
+		// 悬停油门与电机参数有关系,也取决于质量
 		u.thrust = u1 / param.full_thrust;
+		// VERT_THRU = 1.0;
 		u.mode = Controller_Output_t::VERT_THRU;
+		// use_yaw_rate_ctrl = false
 		if(param.use_yaw_rate_ctrl){
 			u.yaw_mode = Controller_Output_t::CTRL_YAW_RATE;
 			u.yaw = u_yaw;
@@ -302,8 +341,12 @@ void Controller::publish_ctrl(const Controller_Output_t& u, const ros::Time& sta
 	msg.header.frame_id = std::string("FRD");
 
 	// need to translate to forward-right-down frame
+	// u.roll u.pitch 的单位是rad，转换为了deg
 	msg.axes.push_back(toDeg(u.roll));
 	msg.axes.push_back(toDeg(-u.pitch));
+
+	// if mode > 0, thrust = 0~100%;
+	// if mode < 0, thrust = -? m/s ~ +? m/s
 	if (u.mode < 0)
 	{
 		msg.axes.push_back(u.thrust);
@@ -312,11 +355,14 @@ void Controller::publish_ctrl(const Controller_Output_t& u, const ros::Time& sta
 	{
 		msg.axes.push_back(u.thrust*100);	
 	}
+	//  u.yaw 的单位是rad，转换为了deg
 	msg.axes.push_back(toDeg(-u.yaw));
+	// 标志位
 	msg.axes.push_back(u.mode);
 	msg.axes.push_back(u.yaw_mode);
 
 	//add time stamp for debug
+	// 无实际意义，用于debug
     msg.buttons.push_back(100000);
     msg.buttons.push_back(extra_stamp.sec/msg.buttons[0]);
     msg.buttons.push_back(extra_stamp.sec%msg.buttons[0]);
