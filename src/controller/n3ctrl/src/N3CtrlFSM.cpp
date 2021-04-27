@@ -25,6 +25,8 @@ N3CtrlFSM::N3CtrlFSM(Parameter_t& param_, Controller& controller_, HovThrKF& hov
 	point_data.p(1) = 0.0;
 	point_data.p(2) = 1.0;
 	point_data.yaw = 0.0;
+
+	point_data.get_cmd = false;
 }
 
 void N3CtrlFSM::process()

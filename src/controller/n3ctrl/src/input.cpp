@@ -175,6 +175,8 @@ void Cmd_point_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg)
     p(1) = msg.position.y;
     p(2) = msg.position.z;
 
+    get_cmd = true;
+
     yaw = uav_utils::normalize_angle(msg.yaw);
 }
 

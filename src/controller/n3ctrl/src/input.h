@@ -85,6 +85,7 @@ class Cmd_point_Data_t {
 
     quadrotor_msgs::PositionCommand msg;
     ros::Time rcv_stamp;
+    bool get_cmd;
 
     Cmd_point_Data_t();
     void feed(quadrotor_msgs::PositionCommandConstPtr pMsg);

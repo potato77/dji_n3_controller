@@ -1,5 +1,5 @@
 # 质量要准确设置
-mass        : 1.2
+mass        : 1.3
 gra         : 9.81
 # hov_percent会影响最大推力
 hov_percent : 0.40
@@ -17,7 +17,7 @@ hover:
     vert_velo_limit_for_update: 0.2
     vert_height_limit_for_update: 0.2
     percent_lower_limit: 0.05
-    percent_higher_limit: 0.45
+    percent_higher_limit: 0.55
 
 gain:
     hover:

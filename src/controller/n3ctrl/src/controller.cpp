@@ -142,7 +142,7 @@ void Controller::update(
 	}
 
 	// 角度限制幅度
-	if (std::fabs(F_des(0)/F_des(2)) > std::tan(toRad(50.0)))
+	if (std::fabs(F_des(0)/F_des(2)) > std::tan(toRad(10.0)))
 	{
 		constraint_info += boost::str(boost::format("x(%f) too tilt; ")
 			% toDeg(std::atan2(F_des(0),F_des(2))));
@@ -150,7 +150,7 @@ void Controller::update(
 	}
 
 	// 角度限制幅度
-	if (std::fabs(F_des(1)/F_des(2)) > std::tan(toRad(50.0)))
+	if (std::fabs(F_des(1)/F_des(2)) > std::tan(toRad(10.0)))
 	{
 		constraint_info += boost::str(boost::format("y(%f) too tilt; ")
 			% toDeg(std::atan2(F_des(1),F_des(2))));

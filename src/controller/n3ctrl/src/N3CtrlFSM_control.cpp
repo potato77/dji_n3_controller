@@ -167,13 +167,23 @@ void N3CtrlFSM::process_hover_control(Controller_Output_t& u, SO3_Controller_Out
 {
 	Desired_State_t des;
 	// 将期望位置设定为悬停点
-	des.p = hover_pose.head<3>();
-	des.v = Vector3d::Zero();
-	des.yaw = hover_pose(3);
-	// 改为获取指定目标点
-	// des.p = point_data.p;
+	// des.p = hover_pose.head<3>();
 	// des.v = Vector3d::Zero();
-	// des.yaw = point_data.yaw;
+	// des.yaw = hover_pose(3);
+
+	if(point_data.get_cmd)
+	{
+		//改为获取指定目标点
+		des.p = point_data.p;
+		des.v = Vector3d::Zero();
+		des.yaw = point_data.yaw;
+	}else
+	{
+		//改为获取指定目标点
+		des.p = point_data.p;
+		des.v = Vector3d::Zero();
+		des.yaw = point_data.yaw;
+	}
 
 	des.a = Vector3d::Zero();
 
@@ -235,6 +245,7 @@ void N3CtrlFSM::process_js_control(Controller_Output_t& u, SO3_Controller_Output
 			case MOVE:
 				des.p(axis_id) = odom_data.p(axis_id);
 				des.v(axis_id) = des_v(axis_id);
+				// ROS_WARN("[n3ctrl] state = MOVE");//zxzxzxzx
 				break;
 			// 定点
 			case BREAK:
