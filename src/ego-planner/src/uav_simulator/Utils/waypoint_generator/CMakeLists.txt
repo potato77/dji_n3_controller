@@ -33,3 +33,9 @@ add_executable(waypoint_generator src/waypoint_generator.cpp)
 target_link_libraries(waypoint_generator
    ${catkin_LIBRARIES}
 )
+
+add_executable(waypoint_generator_simple src/waypoint_generator_simple.cpp)
+
+target_link_libraries(waypoint_generator_simple
+   ${catkin_LIBRARIES}
+)

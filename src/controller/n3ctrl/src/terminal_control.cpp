@@ -18,7 +18,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     //　【发布】　控制指令
-    pos_cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("/planning/position_cmd", 50);
+    pos_cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("/terminal/point_cmd", 50);
     // /terminal/point_cmd
 
     /* control parameter */

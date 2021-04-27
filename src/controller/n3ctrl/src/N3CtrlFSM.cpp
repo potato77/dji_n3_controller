@@ -19,6 +19,12 @@ N3CtrlFSM::N3CtrlFSM(Parameter_t& param_, Controller& controller_, HovThrKF& hov
 
 	hover_pose.setZero();
 	last_command_id = 0;
+
+	// 初始化point_data
+	point_data.p(0) = 0.0;
+	point_data.p(1) = 0.0;
+	point_data.p(2) = 1.0;
+	point_data.yaw = 0.0;
 }
 
 void N3CtrlFSM::process()
