@@ -444,4 +444,206 @@ void Controller::output_visualization(const Controller_Output_t& u)
 	msg.linear_acceleration.z = fz;
 
 	ctrl_vis_pub.publish(msg);
+}
+
+float Controller::constrain_function(float data, float Max)
+{
+    if(abs(data)>Max)
+    {
+        return (data > 0) ? Max : -Max;
+    }
+    else
+    {
+        return data;
+    }
+}
+
+void Controller::pos_controller(
+	const Desired_State_t& des, 
+	const Odom_Data_t& odom, 
+	Controller_Output_t& u)
+{
+	if(!is_configured)
+	{
+		ROS_INFO("\033[1;31m---->Gains for controller might not be initialized!\033[0m");
+	}
+
+	if (des.v(0) != 0.0 || des.v(1) != 0.0 || des.v(2) != 0.0) {
+		// ROS_INFO("Reset integration");
+		int_e_v.setZero();
+	}
+
+	// 获取当前偏航角
+	double yaw_curr = get_yaw_from_quaternion(odom.q);
+	// 期望偏航角
+	double	yaw_des = des.yaw;
+	// 坐标转换矩阵（仅根据当前yaw角生成）
+	// 没看懂为什么要乘上wRc和cRw
+	// 
+	Matrix3d wRc = rotz(yaw_curr);
+	Matrix3d cRw = wRc.transpose();
+
+	// 误差项，期望力
+	Vector3d e_p, e_v, F_des;
+	double e_yaw = 0.0;
+
+	Vector3d vel_setpoint;
+    if((des.move_mode & 0b10) == 0) //xy channel
+    {
+        vel_setpoint[0] = des.v[0] + Kp(0,0) * (des.p[0] - odom.p[0]);
+        vel_setpoint[1] = des.v[1] + Kp(1,1) * (des.p[1] - odom.p[1]);
+    }
+    else
+    {
+        vel_setpoint[0] = des.v[0];
+        vel_setpoint[1] = des.v[1];
+    }
+
+    if((des.move_mode & 0b01) == 0) //z channel
+    {
+        vel_setpoint[2] = des.v[2] + Kp(2,2)  * (des.p[2] - odom.p[2]);
+    }
+    else
+    {
+        vel_setpoint[2] = des.v[2];
+    }
+
+    // Limit the velocity setpoint
+	// 后期将0.5更换为参数
+    vel_setpoint[0] = constrain_function(vel_setpoint[0], 0.5);
+    vel_setpoint[1] = constrain_function(vel_setpoint[1], 0.5);
+    vel_setpoint[2] = constrain_function(vel_setpoint[2], 0.5);
+
+	e_v = vel_setpoint - odom.v;
+
+	// 积分项？
+	for (size_t k = 0; k < 3; ++k) {
+		if (std::fabs(e_v(k)) < 0.2) {
+			int_e_v(k) += e_v(k) * 1.0 / 50.0;
+		}
+	}
+
+	// 速度比例控制
+	Eigen::Vector3d u_v_p = wRc * Kv * cRw * e_v;
+
+	// 速度积分控制
+	Eigen::Vector3d u_v_i = wRc * Kvi * cRw * int_e_v;
+
+	const std::vector<double> integration_output_limits = {0.4, 0.4, 0.4};
+	for (size_t k = 0; k < 3; ++k) {
+		if (std::fabs(u_v_i(k)) > integration_output_limits[k]) {
+			uav_utils::limit_range(u_v_i(k), integration_output_limits[k]);
+			ROS_INFO("Integration saturate for axis %zu, value=%.3f", k, u_v_i(k));
+		}
+	}
+
+	// 速度控制
+	Eigen::Vector3d u_v = u_v_p + u_v_i;
+
+	// 偏航角误差
+	e_yaw = yaw_des - yaw_curr;
+
+	while(e_yaw > M_PI) e_yaw -= (2 * M_PI);
+	while(e_yaw < -M_PI) e_yaw += (2 * M_PI);
+
+	// 偏航教控制量
+	double u_yaw = Kyaw * e_yaw;
+	
+	// 期望力 = 质量*控制量 + 重力抵消 + 期望加速度*质量*Ka
+	F_des = u_v * param.mass + Vector3d(0, 0, param.mass * param.gra) + Ka * param.mass * des.a;
+	
+	// 如果向上推力小于重力的一半
+	// 或者向上推力大于重力的两倍
+	if (F_des(2) < 0.5 * param.mass * param.gra)
+	{
+		F_des = F_des / F_des(2) * (0.5 * param.mass * param.gra);
+	}
+	else if (F_des(2) > 2 * param.mass * param.gra)
+	{
+		F_des = F_des / F_des(2) * (2 * param.mass * param.gra);
+	}
+
+	// 角度限制幅度
+	if (std::fabs(F_des(0)/F_des(2)) > std::tan(toRad(tilt_angle_max)))
+	{
+		F_des(0) = F_des(0)/std::fabs(F_des(0)) * F_des(2) * std::tan(toRad(tilt_angle_max));
+	}
+
+	// 角度限制幅度
+	if (std::fabs(F_des(1)/F_des(2)) > std::tan(toRad(tilt_angle_max)))
+	{
+		F_des(1) = F_des(1)/std::fabs(F_des(1)) * F_des(2) * std::tan(toRad(tilt_angle_max));	
+	}
+
+	Vector3d z_b_des = F_des / F_des.norm();
+	
+	/////////////////////////////////////////////////
+	// Z-X-Y Rotation Sequence                
+	// Vector3d x_c_des = Vector3d(std::cos(yaw_des), sin(yaw_des), 0.0);
+	// Vector3d y_b_des = z_b_des.cross(x_c_des) / z_b_des.cross(x_c_des).norm();
+	// Vector3d x_b_des = y_b_des.cross(z_b_des);
+	/////////////////////////////////////////////////
+
+	/////////////////////////////////////////////////
+	// Z-Y-X Rotation Sequence                
+	Vector3d y_c_des = Vector3d(-std::sin(yaw_des), std::cos(yaw_des), 0.0);
+	Vector3d x_b_des = y_c_des.cross(z_b_des) / y_c_des.cross(z_b_des).norm();
+	Vector3d y_b_des = z_b_des.cross(x_b_des);
+	///////////////////////////////////////////////// 
+
+	Matrix3d R_des1; // it's wRb
+	R_des1 << x_b_des, y_b_des, z_b_des;
+	
+	Matrix3d R_des2; // it's wRb
+	R_des2 << -x_b_des, -y_b_des, z_b_des;
+	
+	Vector3d e1 = R_to_ypr(R_des1.transpose() * odom.q.toRotationMatrix());
+	Vector3d e2 = R_to_ypr(R_des2.transpose() * odom.q.toRotationMatrix());
+
+	Matrix3d R_des; // it's wRb
+
+	if (e1.norm() < e2.norm())
+	{
+		R_des = R_des1;
+	}
+	else
+	{
+		R_des = R_des2;
+	}
+
+
+	// n3 api control in forward-left-up frame
+	// F_des是位于ENU坐标系的,F_c是FLU
+	Vector3d F_c = wRc.transpose() * F_des;
+	// 无人机姿态的矩阵形式
+	Matrix3d wRb_odom = odom.q.toRotationMatrix();
+	// 第三列
+	Vector3d z_b_curr = wRb_odom.col(2);
+	// 机体系下的推力合力 相当于Rb * F_enu 惯性系到机体系
+	double u1 = F_des.dot(z_b_curr);
+	double fx = F_c(0);
+	double fy = F_c(1);
+	double fz = F_c(2);
+	// 期望roll: 
+	u.roll  = std::atan2(-fy, fz);
+	u.pitch = std::atan2( fx, fz);
+	// 油门 = 期望推力/最大推力
+	// full_thrust = mass * gra / hov_percent;
+	// 这里相当于认为油门是线性的,满足某种比例关系,即认为某个重量 = 悬停油门
+	// 悬停油门与电机参数有关系,也取决于质量
+	u.thrust = u1 / param.full_thrust;
+	// VERT_THRU = 1.0;
+	u.mode = Controller_Output_t::VERT_THRU;
+	// use_yaw_rate_ctrl = false
+	if(param.use_yaw_rate_ctrl){
+		u.yaw_mode = Controller_Output_t::CTRL_YAW_RATE;
+		u.yaw = u_yaw;
+	}
+	else{
+		u.yaw_mode = Controller_Output_t::CTRL_YAW;
+		u.yaw = des.yaw;
+	}
+
+	
+
 };

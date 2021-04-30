@@ -187,7 +187,17 @@ void N3CtrlFSM::process_hover_control(Controller_Output_t& u, SO3_Controller_Out
 
 	des.a = Vector3d::Zero();
 
-	controller.update(des, odom_data, u, u_so3);
+	// 后续改为参数，可以选择不同的控制器
+	if(1)
+	{
+		controller.update(des, odom_data, u, u_so3);
+	}else
+	{
+		controller.pos_controller(des, odom_data, u);
+	}
+	
+
+	
 
 	publish_desire(des);
 }

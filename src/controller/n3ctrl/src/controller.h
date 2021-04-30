@@ -16,6 +16,8 @@ struct Desired_State_t
 	double yaw;
 	Eigen::Quaterniond q;
 	Eigen::Vector3d a;
+	int frame;
+	int move_mode;
 };
 
 struct Controller_Output_t
@@ -78,7 +80,9 @@ public:
 	void update(const Desired_State_t& des, const Odom_Data_t& odom, 
 		Controller_Output_t& u, SO3_Controller_Output_t& u_so3
 	);
-	
+	void pos_controller(const Desired_State_t& des,  const Odom_Data_t& odom, Controller_Output_t& u );
+	float constrain_function(float data, float Max);
+
 	void output_visualization(const Controller_Output_t& u);
 	void publish_ctrl(const Controller_Output_t& u, const ros::Time& stamp, const ros::Time& extra_stamp);
 	void publish_so3_ctrl(const SO3_Controller_Output_t& u_so3, const ros::Time& stamp);
