@@ -45,6 +45,7 @@ void Controller::config_gain(const Parameter_t::Gain& gain)
 	Ka(1,1) = gain.Ka1;
 	Ka(2,2) = gain.Ka2;
 	Kyaw = gain.Kyaw;
+	tilt_angle_max = gain.tilt_angle_max;
 }
 
 void Controller::update(
@@ -142,19 +143,19 @@ void Controller::update(
 	}
 
 	// 角度限制幅度
-	if (std::fabs(F_des(0)/F_des(2)) > std::tan(toRad(10.0)))
+	if (std::fabs(F_des(0)/F_des(2)) > std::tan(toRad(tilt_angle_max)))
 	{
 		constraint_info += boost::str(boost::format("x(%f) too tilt; ")
 			% toDeg(std::atan2(F_des(0),F_des(2))));
-		F_des(0) = F_des(0)/std::fabs(F_des(0)) * F_des(2) * std::tan(toRad(30.0));
+		F_des(0) = F_des(0)/std::fabs(F_des(0)) * F_des(2) * std::tan(toRad(tilt_angle_max));
 	}
 
 	// 角度限制幅度
-	if (std::fabs(F_des(1)/F_des(2)) > std::tan(toRad(10.0)))
+	if (std::fabs(F_des(1)/F_des(2)) > std::tan(toRad(tilt_angle_max)))
 	{
 		constraint_info += boost::str(boost::format("y(%f) too tilt; ")
 			% toDeg(std::atan2(F_des(1),F_des(2))));
-		F_des(1) = F_des(1)/std::fabs(F_des(1)) * F_des(2) * std::tan(toRad(30.0));	
+		F_des(1) = F_des(1)/std::fabs(F_des(1)) * F_des(2) * std::tan(toRad(tilt_angle_max));	
 	}
 	// }
 

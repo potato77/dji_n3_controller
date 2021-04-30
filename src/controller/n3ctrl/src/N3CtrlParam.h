@@ -13,6 +13,7 @@ public:
 		double Kvi0,Kvi1,Kvi2;
 		double Ka0,Ka1,Ka2;
 		double Kyaw;
+		double tilt_angle_max;
 	};
 
 	struct Idling

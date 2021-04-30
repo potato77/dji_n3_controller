@@ -40,6 +40,7 @@ gain:
         Ka2: 1.0
         # 偏航角误差反馈系数
         Kyaw: 20.0
+        tilt_angle_max: 5.0
     track:
         Kp0: 2.3
         Kp1: 2.3
@@ -54,6 +55,7 @@ gain:
         Ka1: 1.0
         Ka2: 1.0
         Kyaw: 20.0
+        tilt_angle_max: 20.0
 
 idling:
     desired_height_limit:   -1.10

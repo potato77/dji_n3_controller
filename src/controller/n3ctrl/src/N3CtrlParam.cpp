@@ -24,6 +24,7 @@ void Parameter_t::config_from_ros_handle(const ros::NodeHandle& nh)
 	read_essential_param(nh, "gain/hover/Ka2", hover_gain.Ka2);
 
 	read_essential_param(nh, "gain/hover/Kyaw", hover_gain.Kyaw);
+	read_essential_param(nh, "gain/hover/tilt_angle_max", hover_gain.tilt_angle_max);
 	
 
 	read_essential_param(nh, "gain/track/Kp0", track_gain.Kp0);
@@ -43,6 +44,7 @@ void Parameter_t::config_from_ros_handle(const ros::NodeHandle& nh)
 	read_essential_param(nh, "gain/track/Ka2", track_gain.Ka2);
 
 	read_essential_param(nh, "gain/track/Kyaw", track_gain.Kyaw);
+	read_essential_param(nh, "gain/track/tilt_angle_max", hover_gain.tilt_angle_max);
 	
 	read_essential_param(nh, "idling/desired_height_limit", idling.desired_height_limit);
 	read_essential_param(nh, "idling/desired_velo_limit", idling.desired_velo_limit); // 0.01

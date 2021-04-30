@@ -66,6 +66,9 @@ add_executable(vicon_odom src/vicon_odom.cpp)
 add_dependencies(vicon_odom n3ctrl_pid_gencpp)
 target_link_libraries(vicon_odom ${catkin_LIBRARIES})
 
+add_executable(mocap_pos_to_odom src/mocap_pos_to_odom.cpp)
+add_dependencies(mocap_pos_to_odom n3ctrl_pid_gencpp)
+target_link_libraries(mocap_pos_to_odom ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############

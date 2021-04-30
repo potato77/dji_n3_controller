@@ -68,6 +68,7 @@ public:
 	Eigen::Matrix3d Kvi;
 	Eigen::Matrix3d Ka;
 	double Kyaw;
+	double tilt_angle_max;
 
 	Eigen::Vector3d int_e_v;
 
