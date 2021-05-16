@@ -27,9 +27,9 @@ double time_forward_;
 void bsplineCallback(ego_planner::BsplineConstPtr msg)
 {
   // parse pos traj
-
+  // 初始化矩阵，用于存储轨迹点
   Eigen::MatrixXd pos_pts(3, msg->pos_pts.size());
-
+  // 初始化向量，用于存储knots
   Eigen::VectorXd knots(msg->knots.size());
   for (size_t i = 0; i < msg->knots.size(); ++i)
   {
@@ -43,6 +43,9 @@ void bsplineCallback(ego_planner::BsplineConstPtr msg)
     pos_pts(2, i) = msg->pos_pts[i].z;
   }
 
+  // 初始化一个类 
+  // order是阶数
+  // 0.1是时间间隔
   UniformBspline pos_traj(pos_pts, msg->order, 0.1);
   pos_traj.setKnot(knots);
 
@@ -58,11 +61,16 @@ void bsplineCallback(ego_planner::BsplineConstPtr msg)
   start_time_ = msg->start_time;
   traj_id_ = msg->traj_id;
 
+  // traj是一个UniformBspline容器
   traj_.clear();
+  // 位置
   traj_.push_back(pos_traj);
+  // 速度
   traj_.push_back(traj_[0].getDerivative());
+  // 加速度
   traj_.push_back(traj_[1].getDerivative());
 
+  // 轨迹的时间总长
   traj_duration_ = traj_[0].getTimeSum();
 
   receive_traj_ = true;
@@ -167,12 +175,14 @@ void cmdCallback(const ros::TimerEvent &e)
     return;
 
   ros::Time time_now = ros::Time::now();
+  // 计算距离轨迹开始后的时间差
   double t_cur = (time_now - start_time_).toSec();
 
   Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero()), acc(Eigen::Vector3d::Zero()), pos_f;
   std::pair<double, double> yaw_yawdot(0, 0);
 
   static ros::Time time_last = ros::Time::now();
+  // 当前时间在轨迹总时长内
   if (t_cur < traj_duration_ && t_cur >= 0.0)
   {
     pos = traj_[0].evaluateDeBoorT(t_cur);
@@ -180,12 +190,16 @@ void cmdCallback(const ros::TimerEvent &e)
     acc = traj_[2].evaluateDeBoorT(t_cur);
 
     /*** calculate yaw ***/
+    // 根据位置计算偏航角
+    // 没有使用ego发过来的偏航角
     yaw_yawdot = calculate_yaw(t_cur, pos, time_now, time_last);
     /*** calculate yaw ***/
 
     double tf = min(traj_duration_, t_cur + 2.0);
+    // 计算最终位置
     pos_f = traj_[0].evaluateDeBoorT(tf);
   }
+  // 时间大于总时长
   else if (t_cur >= traj_duration_)
   {
     /* hover when finish traj_ */
